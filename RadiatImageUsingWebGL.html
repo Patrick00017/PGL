@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>draw points</title>
+</head>
+
+<body onload="main()">
+    <canvas id="canvas" width="1000" height="400">
+        not support
+    </canvas>
+</body>
+<script src="lib/cuon-matrix.js"></script>
+<script src="lib/cuon-utils.js"></script>
+<script src="lib/webgl-debug.js"></script>
+<script src="lib/webgl-utils.js"></script>
+<script>
+    const vertexScript = `
+        attribute vec4 a_position;
+        attribute vec3 color;
+        varying vec3 v_color;
+        void main(){
+            v_color = color;
+            gl_Position = a_position;
+        }
+    `;
+
+    const fragmentScript = `
+        precision mediump float;
+        varying vec3 v_color;
+        uniform vec3 translate;
+        void main(){
+            gl_FragColor = vec4(v_color*translate,1.0);
+        }
+    `;
+    let pointInformation = new Float32Array([
+        //position     //color(rgb)
+        //center
+        0.0, 0.0, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        //up raw
+        -1, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.75, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.5, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.25, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.0, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.25, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.5, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.75, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        1, 1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        //bottom raw
+        -1, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.75, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.5, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        -0.25, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.25, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.5, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        0.75, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+        1, -1, Math.fround(Math.random()), Math.fround(Math.random()), Math.fround(Math.random()),
+    ]);
+    let indices = new Uint8Array([
+        0, 1, 2,
+        0, 2, 3,
+        0, 3, 4,
+        0, 4, 5,
+        0, 5, 6,
+        0, 6, 7,
+        0, 7, 8,
+        0, 8, 9,
+
+        0, 10, 11,
+        0, 11, 12,
+        0, 12, 13,
+        0, 13, 14,
+        0, 14, 15,
+        0, 15, 16,
+        0, 16, 17,
+        0, 17, 18,
+
+        0, 1, 10,
+        0, 9, 18
+    ]);
+    // the color attribute location in webgl program
+    let color = null;
+    let translateLocation = null;
+    let present1 = 0.8;
+    let present2 = 0.8;
+    let present3 = 0.8;
+    let change1 = 0.01;
+    let change2 = 0.01;
+    let change3 = 0.01;
+    function main() {
+        let canvas = document.getElementById("canvas");
+        let gl = getWebGLContext(canvas);
+        if (!gl) {
+            console.log("not support web gl");
+        }
+        if (!initShaders(gl, vertexScript, fragmentScript)) {
+            console.log("not support webgl");
+        }
+        let n = init(gl);
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_BYTE, 0);
+        setInterval(() => {
+            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clear(gl.COLOR_BUFFER_BIT);
+            if(Math.random() > 0.5){
+                change1 = -change1;
+            }
+            if(Math.random() > 0.5){
+                change2 = -change2;
+            }
+            if(Math.random() > 0.5){
+                change3 = -change3;
+            }
+            present1 = (present1+change1) % 1;
+            present2 = (present2+change2) % 1;
+            present3 = (present3+change3) % 1;
+            gl.uniform3f(translateLocation, present1, present2, present3);
+            gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_BYTE, 0);
+        }, 500);
+    }
+
+    function init(gl) {
+        let n = 54;
+        let perlength = pointInformation.BYTES_PER_ELEMENT;
+        let buffers = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffers);
+        gl.bufferData(gl.ARRAY_BUFFER, pointInformation, gl.STATIC_DRAW);
+        let a_position = gl.getAttribLocation(gl.program, "a_position");
+        gl.vertexAttribPointer(a_position, 2, gl.FLOAT, false, perlength * 5, 0);
+        gl.enableVertexAttribArray(a_position);
+        color = gl.getAttribLocation(gl.program, "color");
+        gl.vertexAttribPointer(color, 3, gl.FLOAT, false, perlength * 5, perlength * 2);
+        gl.enableVertexAttribArray(color);
+        translateLocation = gl.getUniformLocation(gl.program, "translate");
+        gl.uniform3f(translateLocation, 1, 1, 1);
+        let indexesBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexesBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+        return n;
+    }
+</script>
+
+</html>
