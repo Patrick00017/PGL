@@ -1,42 +1,62 @@
 function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, lightColor, ambientLight) {
     const A_POSITION = 'a_position'
     const A_POINTCOLOR = 'a_pointColor'
-    const V_POINTCOLOR = 'v_pointColor'
     const A_NORMAL = 'a_normal'
-    const U_LIGHTDIRECTION = 'u_lightDirection'
+    const U_LIGHTPOSITION = 'u_lightPosition'
     const U_LIGHTCOLOR = 'u_lightColor'
     const U_AMBIENT = 'u_ambient'
-    const U_EYE = 'u_eye'
+    const U_EYEPOSITION = 'u_eyePosition'
     const U_MVP = 'u_mvp'
+
+    const V_POINTCOLOR = 'v_pointColor'
+    const V_NORMAL = 'v_normal'
+    const V_FRAGPOS = 'v_fragPos'
     const vertexShader = `
         attribute vec4 ${A_POSITION};
         attribute vec3 ${A_POINTCOLOR};
         attribute vec3 ${A_NORMAL};
-        uniform vec3 ${U_LIGHTDIRECTION};
-        uniform vec3 ${U_LIGHTCOLOR};
-        uniform vec3 ${U_AMBIENT};
+        
         uniform mat4 ${U_MVP};
-        uniform vec3 ${U_EYE};
+        
         varying vec3 ${V_POINTCOLOR};
+        varying vec3 ${V_NORMAL};
+        varying vec3 ${V_FRAGPOS};
         void main()
         {
             gl_Position = ${U_MVP} * ${A_POSITION};
-            gl_PointSize = 5.0;
-            
-            vec3 normal = normalize(${A_NORMAL});
-            vec3 lightDirection = normalize(${U_LIGHTDIRECTION});
-            float nDotL = max(dot(normal, lightDirection), 0.0);
-            vec3 ambient = ${U_AMBIENT} * ${A_POINTCOLOR};
-            vec3 diffuse = ${U_LIGHTCOLOR} * ${A_POINTCOLOR} * nDotL;
-            ${V_POINTCOLOR} = diffuse + ambient;
+            ${V_FRAGPOS} = vec3(${A_POSITION});
+            ${V_NORMAL} = ${A_NORMAL};
+            ${V_POINTCOLOR} = ${A_POINTCOLOR};
+            gl_PointSize = 2.0;
         }
     `
     const fragmentShader = `
         precision mediump float;
+        uniform vec3 ${U_LIGHTPOSITION};
+        uniform vec3 ${U_LIGHTCOLOR};
+        uniform vec3 ${U_AMBIENT};
+        uniform vec3 ${U_EYEPOSITION};
         varying vec3 ${V_POINTCOLOR};
+        varying vec3 ${V_NORMAL};
+        varying vec3 ${V_FRAGPOS};
         void main()
         {
-            gl_FragColor = vec4(${V_POINTCOLOR}, 1.0);
+            vec3 normal = normalize(${V_NORMAL});
+            vec3 lightDirection = normalize(${U_LIGHTPOSITION} - ${V_FRAGPOS});
+            float nDotL = max(dot(normal, lightDirection), 0.0);
+            vec3 ambient = ${U_AMBIENT} * ${U_LIGHTCOLOR};
+            vec3 diffuse = ${U_LIGHTCOLOR} * ${U_LIGHTCOLOR} * nDotL;
+            
+            vec3 eyeDirection = normalize(${U_EYEPOSITION});
+            vec3 reflectDirection = reflect(-lightDirection, normal);
+            float eDotR = max(dot(eyeDirection, reflectDirection), 0.0);
+            float specStrength = 0.5;
+            float shininess = 64.0;
+            float spec = pow(eDotR, shininess);
+            vec3 specular = specStrength * spec * ${U_LIGHTCOLOR};
+            
+            vec3 result = (ambient + diffuse + specular) * ${V_POINTCOLOR};
+            gl_FragColor = vec4(result, 1.0);
         }
     `
 
@@ -52,9 +72,10 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
     const a_pointColor = gl.getAttribLocation(gl.program, A_POINTCOLOR)
     const a_normal = gl.getAttribLocation(gl.program, A_NORMAL)
     const u_mvp = gl.getUniformLocation(gl.program, U_MVP)
-    const u_lightDirection = gl.getUniformLocation(gl.program, U_LIGHTDIRECTION)
+    const u_lightDirection = gl.getUniformLocation(gl.program, U_LIGHTPOSITION)
     const u_lightColor = gl.getUniformLocation(gl.program, U_LIGHTCOLOR)
     const u_ambient = gl.getUniformLocation(gl.program, U_AMBIENT)
+    const u_eyePosition = gl.getUniformLocation(gl.program, U_EYEPOSITION)
 
     gl.uniform3fv(u_lightDirection, lightDirection.elements)
     gl.uniform3fv(u_lightColor, lightColor.elements)
@@ -62,7 +83,9 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
 
     const mvp = new Matrix4()
     mvp.setPerspective(30, 1, 1, 100)
-    mvp.lookAt(3, 3, 7, 0, 0, 0, 0, 1, 0)
+    mvp.lookAt(4.0, 2.5, 4.0, 0, 0, 0, 0, 1, 0)
+    const eyePosition = new Vector3([4.0, 3.5, 4.0])
+    gl.uniform3fv(u_eyePosition, eyePosition.elements)
     gl.uniformMatrix4fv(u_mvp, false, mvp.elements)
 
     const FSIZE = vertexArray.BYTES_PER_ELEMENT
@@ -161,10 +184,10 @@ function main() {
         4, 7, 6,
         4, 6, 5
     ]
-    const lightDirection = new Vector3([0.5, 3.0, 4.0])
+    const lightDirection = new Vector3([-2.0, 2.5, -2.0])
     const lightColor = new Vector3([1.0, 1.0, 1.0])
     const ambientLight = new Vector3([0.2, 0.2, 0.2])
 
-    drawRectangle(gl, points, index, 9, lightDirection, lightColor)
+    drawRectangle(gl, points, index, 9, lightDirection, lightColor, ambientLight)
     // drawRectangle(gl, points2, index2)
 }
