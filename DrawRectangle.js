@@ -184,8 +184,10 @@ function main() {
     const eyePosition = new Vector3([4.0, 2.5, 4.0])
     const projection = new Matrix4().setPerspective(30, 1, 1, 100)
     const view = new Matrix4().lookAt(4.0, 2.5, 4.0, 0, 0, 0, 0, 1, 0)
-    const model = new Matrix4().scale(0.2, 0.2, 0.2).rotate(45.0, 1.0, 0.0, 0.0)
+    const model1 = new Matrix4().scale(0.2, 0.2, 0.2).rotate(25.0, 1.0, 0.0, 0.0).translate(2.5, -2.2, 0.2)
+    const model2 = new Matrix4().scale(0.3, 0.3, 0.3).rotate(45.0, 1.0, 0.0, 0.0).translate(-2.5, 2.5, 0.2)
 
-    drawRectangle(gl, eyePosition, projection, view, model, lightDirection, lightColor, ambientLight)
+    drawRectangle(gl, eyePosition, projection, view, model1, lightDirection, lightColor, ambientLight)
+    drawRectangle(gl, eyePosition, projection, view, model2, lightDirection, lightColor, ambientLight)
     // drawRectangle(gl, points2, index2)
 }
