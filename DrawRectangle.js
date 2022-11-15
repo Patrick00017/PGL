@@ -1,4 +1,4 @@
-function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, lightColor, ambientLight) {
+function drawRectangle(gl, eye, projection, view, model, lightDirection, lightColor, ambientLight) {
     const A_POSITION = 'a_position'
     const A_POINTCOLOR = 'a_pointColor'
     const A_NORMAL = 'a_normal'
@@ -6,7 +6,9 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
     const U_LIGHTCOLOR = 'u_lightColor'
     const U_AMBIENT = 'u_ambient'
     const U_EYEPOSITION = 'u_eyePosition'
-    const U_MVP = 'u_mvp'
+    const U_PROJECTION = 'u_projection'
+    const U_VIEW = 'u_view'
+    const U_MODEL = 'u_model'
 
     const V_POINTCOLOR = 'v_pointColor'
     const V_NORMAL = 'v_normal'
@@ -16,14 +18,16 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
         attribute vec3 ${A_POINTCOLOR};
         attribute vec3 ${A_NORMAL};
         
-        uniform mat4 ${U_MVP};
+        uniform mat4 ${U_PROJECTION};
+        uniform mat4 ${U_VIEW};
+        uniform mat4 ${U_MODEL};
         
         varying vec3 ${V_POINTCOLOR};
         varying vec3 ${V_NORMAL};
         varying vec3 ${V_FRAGPOS};
         void main()
         {
-            gl_Position = ${U_MVP} * ${A_POSITION};
+            gl_Position = ${U_PROJECTION} * ${U_VIEW} * ${U_MODEL} * ${A_POSITION};
             ${V_FRAGPOS} = vec3(${A_POSITION});
             ${V_NORMAL} = ${A_NORMAL};
             ${V_POINTCOLOR} = ${A_POINTCOLOR};
@@ -60,6 +64,61 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
         }
     `
 
+    // add listener to click
+    let points = [
+        // 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  //v0
+        // -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   //v1
+        // -1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  //v2
+        // 1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  //v3
+        // 1.0, -1.0, -1.0, 1.0, 0.0, 0.0,  //v4
+        // 1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  //v5
+        // -1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  //v6
+        // -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,  //v7
+
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,//v0
+        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,  //v1
+        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, //v2
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,//v0
+        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, //v2
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0,//v3
+
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,//v0
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,//v3
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v4
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,//v0
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v4
+        1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0,//v5
+
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,//v0
+        1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,//v5
+        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, //v6
+        1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0,//v0
+        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, //v1
+        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, //v6
+
+        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v1
+        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v6
+        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0,  //v7
+        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v1
+        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v2
+        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0,  //v7
+
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0,//v3
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, //v4
+        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0,  //v7
+        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, //v2
+        1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0,//v3
+        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0,  //v7
+
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v4
+        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v6
+        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0,  //v7
+        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v4
+        1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0,//v5
+        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v6
+
+    ]
+    const indexlength = 9
     const vertexArray = new Float32Array(points)
     // const indexesArray = new Uint8Array(elementIndexes)
     if (!initShaders(gl, vertexShader, fragmentShader)) {
@@ -71,7 +130,10 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
     const a_position = gl.getAttribLocation(gl.program, A_POSITION)
     const a_pointColor = gl.getAttribLocation(gl.program, A_POINTCOLOR)
     const a_normal = gl.getAttribLocation(gl.program, A_NORMAL)
-    const u_mvp = gl.getUniformLocation(gl.program, U_MVP)
+    // const u_mvp = gl.getUniformLocation(gl.program, U_MVP)
+    const u_projection = gl.getUniformLocation(gl.program, U_PROJECTION)
+    const u_view = gl.getUniformLocation(gl.program, U_VIEW)
+    const u_model = gl.getUniformLocation(gl.program, U_MODEL)
     const u_lightDirection = gl.getUniformLocation(gl.program, U_LIGHTPOSITION)
     const u_lightColor = gl.getUniformLocation(gl.program, U_LIGHTCOLOR)
     const u_ambient = gl.getUniformLocation(gl.program, U_AMBIENT)
@@ -80,16 +142,16 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
     gl.uniform3fv(u_lightDirection, lightDirection.elements)
     gl.uniform3fv(u_lightColor, lightColor.elements)
     gl.uniform3fv(u_ambient, ambientLight.elements)
+    gl.uniformMatrix4fv(u_projection, false, projection.elements)
+    gl.uniformMatrix4fv(u_view, false, view.elements)
+    gl.uniformMatrix4fv(u_model, false, model.elements)
 
     const mvp = new Matrix4()
     mvp.setPerspective(30, 1, 1, 100)
     mvp.lookAt(4.0, 2.5, 4.0, 0, 0, 0, 0, 1, 0)
-    const eyePosition = new Vector3([4.0, 3.5, 4.0])
-    gl.uniform3fv(u_eyePosition, eyePosition.elements)
-    gl.uniformMatrix4fv(u_mvp, false, mvp.elements)
+    gl.uniform3fv(u_eyePosition, eye.elements)
 
     const FSIZE = vertexArray.BYTES_PER_ELEMENT
-    const n = elementIndexes.length
     gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, FSIZE * indexlength, 0)
     gl.vertexAttribPointer(a_pointColor, 3, gl.FLOAT, false, FSIZE * indexlength, FSIZE * 3)
     gl.vertexAttribPointer(a_normal, 3, gl.FLOAT, false, FSIZE * indexlength, FSIZE * 6)
@@ -101,7 +163,6 @@ function drawRectangle(gl, points, elementIndexes, indexlength, lightDirection, 
     // gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexesArray, gl.STATIC_DRAW)
     //
     // gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_BYTE, 0)
-    console.log('ok')
     gl.drawArrays(gl.TRIANGLES, 0, 36)
 }
 
@@ -116,78 +177,15 @@ function main() {
     gl.clearColor(0.0, 0.0, 0.0, 1.0)
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
 
-    // add listener to click
-    let points = [
-        // 1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  //v0
-        // -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   //v1
-        // -1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  //v2
-        // 1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  //v3
-        // 1.0, -1.0, -1.0, 1.0, 0.0, 0.0,  //v4
-        // 1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  //v5
-        // -1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  //v6
-        // -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,  //v7
 
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   0.0, 0.0, 1.0,//v0
-        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0,  //v1
-        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, //v2
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   0.0, 0.0, 1.0,//v0
-        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, //v2
-        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  0.0, 0.0, 1.0,//v3
-
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   1.0, 0.0, 0.0,//v0
-        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  1.0, 0.0, 0.0,//v3
-        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v4
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   1.0, 0.0, 0.0,//v0
-        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 1.0, 0.0, 0.0, //v4
-        1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  1.0, 0.0, 0.0,//v5
-
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   0.0, 1.0, 0.0,//v0
-        1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  0.0, 1.0, 0.0,//v5
-        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, //v6
-        1.0, 1.0, 1.0, 1.0, 0.0, 0.0,   0.0, 1.0, 0.0,//v0
-        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  0.0, 1.0, 0.0, //v1
-        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, //v6
-
-        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  -1.0, 0.0, 0.0, //v1
-        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v6
-        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,-1.0, 0.0, 0.0,  //v7
-        -1.0, 1.0, 1.0, 1.0, 0.0, 0.0,  -1.0, 0.0, 0.0, //v1
-        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0, //v2
-        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,-1.0, 0.0, 0.0,  //v7
-
-        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  0.0, -1.0, 0.0,//v3
-        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, //v4
-        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,0.0, -1.0, 0.0,  //v7
-        -1.0, -1.0, 1.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0, //v2
-        1.0, -1.0, 1.0, 1.0, 0.0, 0.0,  0.0, -1.0, 0.0,//v3
-        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,0.0, -1.0, 0.0,  //v7
-
-        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v4
-        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v6
-        -1.0, -1.0, -1.0, 1.0, 0.0, 0.0,0.0, 0.0, -1.0,  //v7
-        1.0, -1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v4
-        1.0, 1.0, -1.0, 1.0, 0.0, 0.0,  0.0, 0.0, -1.0,//v5
-        -1.0, 1.0, -1.0, 1.0, 0.0, 0.0, 0.0, 0.0, -1.0, //v6
-
-    ]
-    const index = [
-        0, 1, 2,
-        0, 2, 3,
-        0, 3, 4,
-        0, 5, 4,
-        0, 5, 6,
-        0, 1, 6,
-        1, 7, 6,
-        1, 7, 2,
-        3, 4, 7,
-        7, 3, 2,
-        4, 7, 6,
-        4, 6, 5
-    ]
     const lightDirection = new Vector3([-2.0, 2.5, -2.0])
     const lightColor = new Vector3([1.0, 1.0, 1.0])
     const ambientLight = new Vector3([0.2, 0.2, 0.2])
+    const eyePosition = new Vector3([4.0, 2.5, 4.0])
+    const projection = new Matrix4().setPerspective(30, 1, 1, 100)
+    const view = new Matrix4().lookAt(4.0, 2.5, 4.0, 0, 0, 0, 0, 1, 0)
+    const model = new Matrix4().scale(0.2, 0.2, 0.2).rotate(45.0, 1.0, 0.0, 0.0)
 
-    drawRectangle(gl, points, index, 9, lightDirection, lightColor, ambientLight)
+    drawRectangle(gl, eyePosition, projection, view, model, lightDirection, lightColor, ambientLight)
     // drawRectangle(gl, points2, index2)
 }
