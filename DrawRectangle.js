@@ -11,25 +11,40 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     const V_POINTCOLOR = 'v_pointColor'
     const V_NORMAL = 'v_normal'
     const V_FRAGPOS = 'v_fragPos'
+
+    const constant = {
+        a_position: 'a_position',
+        a_pointColor: 'a_pointColor',
+        a_normal: 'a_normal',
+        u_eyePosition: 'u_eyePosition',
+        u_projection: 'u_projection',
+        u_view: 'u_view',
+        u_model: 'u_model',
+        u_normalmodel: 'u_normalmodel',
+        v_pointColor: 'v_pointColor',
+        v_normal: 'v_normal',
+        v_fragPos: 'v_fragPos'
+    }
+
     const vertexShader = `
-        attribute vec4 ${A_POSITION};
-        attribute vec3 ${A_POINTCOLOR};
-        attribute vec3 ${A_NORMAL};
+        attribute vec4 ${constant.a_position};
+        attribute vec3 ${constant.a_pointColor};
+        attribute vec3 ${constant.a_normal};
         
-        uniform mat4 ${U_PROJECTION};
-        uniform mat4 ${U_VIEW};
-        uniform mat4 ${U_MODEL};
-        uniform mat4 ${U_NORMALMODEL};
+        uniform mat4 ${constant.u_projection};
+        uniform mat4 ${constant.u_view};
+        uniform mat4 ${constant.u_model};
+        uniform mat4 ${constant.u_normalmodel};
         
-        varying vec3 ${V_POINTCOLOR};
-        varying vec3 ${V_NORMAL};
-        varying vec3 ${V_FRAGPOS};
+        varying vec3 ${constant.v_pointColor};
+        varying vec3 ${constant.v_normal};
+        varying vec3 ${constant.v_fragPos};
         void main()
         {
-            gl_Position = ${U_PROJECTION} * ${U_VIEW} * ${U_MODEL} * ${A_POSITION};
-            ${V_FRAGPOS} = mat3(${U_MODEL}) * vec3(${A_POSITION});
-            ${V_NORMAL} = mat3(${U_NORMALMODEL}) * ${A_NORMAL};
-            ${V_POINTCOLOR} = ${A_POINTCOLOR};
+            gl_Position = ${constant.u_projection} * ${constant.u_view} * ${constant.u_model} * ${constant.a_position};
+            ${constant.v_fragPos} = mat3(${constant.u_model}) * vec3(${constant.a_position});
+            ${constant.v_normal} = mat3(${constant.u_normalmodel}) * ${constant.a_normal};
+            ${constant.v_pointColor} = ${constant.a_pointColor};
             gl_PointSize = 2.0;
         }
     `
@@ -65,25 +80,25 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
         ${dirLightStruct}
         uniform ${pointLightStructName} light[NR_POINT_LIGHTS];
         uniform ${dirLightStructName} dirLight;
-        uniform vec3 ${U_EYEPOSITION};
-        varying vec3 ${V_POINTCOLOR};
-        varying vec3 ${V_NORMAL};
-        varying vec3 ${V_FRAGPOS};
+        uniform vec3 ${constant.u_eyePosition};
+        varying vec3 ${constant.v_pointColor};
+        varying vec3 ${constant.v_normal};
+        varying vec3 ${constant.v_fragPos};
         
         vec3 calcDirLight(${dirLightStructName} light, vec3 normal, vec3 viewDir);
         vec3 calcPointLight(${pointLightStructName} light, vec3 normal, vec3 viewDir, vec3 fragPos);
         
         void main()
         {
-            vec3 normal = normalize(${V_NORMAL});
-            vec3 viewDir = normalize(${U_EYEPOSITION} - ${V_FRAGPOS});
+            vec3 normal = normalize(${constant.v_normal});
+            vec3 viewDir = normalize(${constant.u_eyePosition} - ${constant.v_fragPos});
             
             vec3 result = vec3(0.0, 0.0, 0.0);
             // result += calcDirLight(dirLight, normal, viewDir);
             for(int i=0;i<NR_POINT_LIGHTS;i++)
-                result += calcPointLight(light[i], normal, viewDir, ${V_FRAGPOS});
+                result += calcPointLight(light[i], normal, viewDir, ${constant.v_fragPos});
             
-            result *= ${V_POINTCOLOR};
+            result *= ${constant.v_pointColor};
             
             gl_FragColor = vec4(result, 1.0);
         }
@@ -185,23 +200,19 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     normalModel.setInverseOf(model)
     normalModel.transpose()
     const vertexArray = new Float32Array(points)
-    // const indexesArray = new Uint8Array(elementIndexes)
-    if (!initShaders(gl, vertexShader, fragmentShader)) {
-        console.log('fail to init the shader program.')
-    }
-    const vertexBuffer = gl.createBuffer()
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, vertexArray, gl.STATIC_DRAW)
 
-    const a_position = gl.getAttribLocation(gl.program, A_POSITION)
-    const a_pointColor = gl.getAttribLocation(gl.program, A_POINTCOLOR)
-    const a_normal = gl.getAttribLocation(gl.program, A_NORMAL)
-    // const u_mvp = gl.getUniformLocation(gl.program, U_MVP)
-    const u_projection = gl.getUniformLocation(gl.program, U_PROJECTION)
-    const u_view = gl.getUniformLocation(gl.program, U_VIEW)
-    const u_model = gl.getUniformLocation(gl.program, U_MODEL)
-    const u_normalModel = gl.getUniformLocation(gl.program, U_NORMALMODEL)
-    const u_eyePosition = gl.getUniformLocation(gl.program, U_EYEPOSITION)
+    const shader = new Shader(gl, constant, vertexShader, fragmentShader)
+    shader.createVertexBufferAndBind(gl, vertexArray, 9)
+    shader.setAttribValue(gl, 'a_position', 3, 0)
+    shader.setAttribValue(gl, 'a_pointColor', 3, 3)
+    shader.setAttribValue(gl, 'a_normal', 3, 6)
+    shader.setUniformMatrix4fv(gl, constant.u_projection, projection)
+    shader.setUniformMatrix4fv(gl, constant.u_view, view)
+    shader.setUniformMatrix4fv(gl, constant.u_model, model)
+    shader.setUniformMatrix4fv(gl, constant.u_normalmodel, normalModel)
+    shader.setUniform3fv(gl, constant.u_eyePosition, eye)
+
+
 
     // find direction light and give the value.
     const u_dirLightDirection = gl.getUniformLocation(gl.program, 'dirLight.direction')
@@ -233,20 +244,9 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     gl.uniform1f(u_linear, 0.09)
     gl.uniform1f(u_quadratic, 0.032)
 
-    gl.uniformMatrix4fv(u_projection, false, projection.elements)
-    gl.uniformMatrix4fv(u_view, false, view.elements)
-    gl.uniformMatrix4fv(u_model, false, model.elements)
-    gl.uniformMatrix4fv(u_normalModel, false, normalModel.elements)
 
-    gl.uniform3fv(u_eyePosition, eye.elements)
 
-    const FSIZE = vertexArray.BYTES_PER_ELEMENT
-    gl.vertexAttribPointer(a_position, 3, gl.FLOAT, false, FSIZE * indexlength, 0)
-    gl.vertexAttribPointer(a_pointColor, 3, gl.FLOAT, false, FSIZE * indexlength, FSIZE * 3)
-    gl.vertexAttribPointer(a_normal, 3, gl.FLOAT, false, FSIZE * indexlength, FSIZE * 6)
-    gl.enableVertexAttribArray(a_position)
-    gl.enableVertexAttribArray(a_pointColor)
-    gl.enableVertexAttribArray(a_normal)
+
     // const elementBuffer = gl.createBuffer()
     // gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, elementBuffer)
     // gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indexesArray, gl.STATIC_DRAW)
@@ -273,7 +273,7 @@ function main() {
     const eyePosition = new Vector3([0.0, 2.5, 4.0])
     const projection = new Matrix4().setPerspective(30, 1, 1, 100)
     let view = new Matrix4().lookAt(0.0, 2.5, 4.0, 0, 0, 0, 0, 1, 0)
-    const model1 = new Matrix4().scale(0.5, 0.5, 0.5).rotate(0.0, 1.0, 0.0, 0.0).translate(0.0, 0.0, 0.0)
+    const model1 = new Matrix4().scale(0.5, 0.5, 0.5).rotate(45.0, 0.0, 1.0, 0.0).translate(0.0, 0.0, 0.0)
     // const model2 = new Matrix4().scale(0.3, 0.3, 0.3).rotate(45.0, 1.0, 0.0, 0.0).translate(-2.5, 2.5, 0.2)
     //draw light
     const pointlightPosition = new Vector3([0.5, 1.2, -0.5])
