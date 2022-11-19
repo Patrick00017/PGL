@@ -1,18 +1,7 @@
 function drawRectangle(gl, eye, projection, view, model, lightDirection, lightColor, ambientLight, color) {
-    const A_POSITION = 'a_position'
-    const A_POINTCOLOR = 'a_pointColor'
-    const A_NORMAL = 'a_normal'
-    const U_EYEPOSITION = 'u_eyePosition'
-    const U_PROJECTION = 'u_projection'
-    const U_VIEW = 'u_view'
-    const U_MODEL = 'u_model'
-    const U_NORMALMODEL = 'u_normalmodel'
-
-    const V_POINTCOLOR = 'v_pointColor'
-    const V_NORMAL = 'v_normal'
-    const V_FRAGPOS = 'v_fragPos'
-
     const constant = {
+        lightNum: 2,
+
         a_position: 'a_position',
         a_pointColor: 'a_pointColor',
         a_normal: 'a_normal',
@@ -53,7 +42,6 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     const dirLightStruct = `
         struct ${dirLightStructName} {
             vec3 direction;
-            vec3 color;
             vec3 ambient;
             vec3 diffuse;
             vec3 specular;
@@ -67,7 +55,6 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
             vec3 ambient;
             vec3 diffuse;
             vec3 specular;
-            vec3 color;
             float constant;
             float linear;
             float quadratic;
@@ -75,7 +62,8 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     `
     const fragmentShader = `
         precision mediump float;
-        #define NR_POINT_LIGHTS 1 
+
+        #define NR_POINT_LIGHTS ${constant.lightNum} 
         ${pointLightStruct}
         ${dirLightStruct}
         uniform ${pointLightStructName} light[NR_POINT_LIGHTS];
@@ -213,38 +201,38 @@ function drawRectangle(gl, eye, projection, view, model, lightDirection, lightCo
     shader.setUniform3fv(gl, constant.u_eyePosition, eye)
 
 
-
-    // find direction light and give the value.
-    const u_dirLightDirection = gl.getUniformLocation(gl.program, 'dirLight.direction')
-    const u_dirLightColor = gl.getUniformLocation(gl.program, 'dirLight.color')
-    const u_dirLightAmbient = gl.getUniformLocation(gl.program, 'dirLight.ambient')
-    const u_dirLightDiffuse = gl.getUniformLocation(gl.program, 'dirLight.diffuse')
-    const u_dirLightSpecular = gl.getUniformLocation(gl.program, 'dirLight.specular')
-    gl.uniform3fv(u_dirLightDirection, lightDirection.elements)
-    gl.uniform3fv(u_dirLightColor, lightColor.elements)
-    gl.uniform3fv(u_dirLightAmbient, new Vector3([0.3, 0.24, 0.14]).elements)
-    gl.uniform3fv(u_dirLightDiffuse, new Vector3([0.5, 0.5, 0.31]).elements)
-    gl.uniform3fv(u_dirLightSpecular, new Vector3([0.5, 0.5, 0.5]).elements)
-
-    // find point light and give the value
-    const u_lightPosition = gl.getUniformLocation(gl.program, 'light[0].position')
-    const u_lightColor = gl.getUniformLocation(gl.program, 'light[0].color')
-    const u_ambient = gl.getUniformLocation(gl.program, 'light[0].ambient')
-    const u_diffuse = gl.getUniformLocation(gl.program, 'light[0].diffuse')
-    const u_specStrength = gl.getUniformLocation(gl.program, 'light[0].specular')
-    const u_constant = gl.getUniformLocation(gl.program, 'light[0].constant')
-    const u_linear = gl.getUniformLocation(gl.program, 'light[0].linear')
-    const u_quadratic = gl.getUniformLocation(gl.program, 'light[0].quadratic')
-    gl.uniform3fv(u_lightPosition, new Vector3([0.5, 1.2, -0.5]).elements)
-    gl.uniform3fv(u_lightColor, new Vector3([1.0, 1.0, 1.0]).elements)
-    gl.uniform3fv(u_ambient, new Vector3([0.3, 0.24, 0.14]).elements)
-    gl.uniform3fv(u_diffuse, new Vector3([0.5, 0.5, 0.31]).elements)
-    gl.uniform3fv(u_specStrength, new Vector3([0.5,0.5,0.5]).elements)
-    gl.uniform1f(u_constant, 1.0)
-    gl.uniform1f(u_linear, 0.09)
-    gl.uniform1f(u_quadratic, 0.032)
+    const dirLight = new DirectionLight(
+        'dirLight',
+        lightDirection,
+        new Vector3([0.3, 0.24, 0.14]),
+        new Vector3([0.5, 0.5, 0.31]),
+        new Vector3([0.5, 0.5, 0.5])
+    )
+    shader.setDirLight(gl, dirLight)
 
 
+    const pointLight1 = new PointLight(
+        'light[0]',
+        new Vector3([0.5, 1.2, -0.5]),
+        new Vector3([0.3, 0.24, 0.14]),
+        new Vector3([0.5, 0.5, 0.31]),
+        new Vector3([0.5, 0.5, 0.5]),
+        1.0,
+        0.09,
+        0.032
+    )
+    const pointLight2 = new PointLight(
+        'light[1]',
+        new Vector3([-0.5, 1.2, 0.5]),
+        new Vector3([0.3, 0.24, 0.14]),
+        new Vector3([0.5, 0.5, 0.31]),
+        new Vector3([0.5, 0.5, 0.5]),
+        1.0,
+        0.09,
+        0.032
+    )
+    shader.setPointLight(gl, pointLight1)
+    shader.setPointLight(gl, pointLight2)
 
 
     // const elementBuffer = gl.createBuffer()
