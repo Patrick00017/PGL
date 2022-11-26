@@ -1,0 +1,25 @@
+{
+  "name": "pgl",
+  "version": "1.0.0",
+  "description": "",
+  "main": "DrawRectangle.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Patrick00017/PGL.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Patrick00017/PGL/issues"
+  },
+  "homepage": "https://github.com/Patrick00017/PGL#readme",
+  "dependencies": {
+    "three": "^0.146.0"
+  }
+}
